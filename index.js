@@ -9,7 +9,7 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // CONFIGURACIÓN
-const calendarId = 'animaskazo@gmail.com'; // Cambia esto por tu calendarId real
+const calendarId = 'dr-plus@dr-plus-459218.iam.gserviceaccount.com'; // Cambia esto por tu calendarId real
 const timeZone = 'America/Santiago';
 
 // 🔐 Lee credenciales desde variable de entorno
