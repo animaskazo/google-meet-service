@@ -8,13 +8,15 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// CONFIGURA ESTO
-const calendarId = 'animaskazo@gmail.com'; // Calendario compartido con la cuenta de servicio
-const keyFile = 'dr-plus-459218-c95000021324.json'; // Ruta a tu JSON descargado
+// CONFIGURACIÓN
+const calendarId = 'TUCORREO@GMAIL.COM'; // Cambia esto por tu calendarId real
 const timeZone = 'America/Santiago';
 
+// 🔐 Lee credenciales desde variable de entorno
+const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+
 const auth = new google.auth.GoogleAuth({
-  keyFile,
+  credentials,
   scopes: ['https://www.googleapis.com/auth/calendar'],
 });
 
