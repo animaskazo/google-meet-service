@@ -1,68 +1,63 @@
-// microservicio Google Meet en Node.js
-const express = require('express');
 const { google } = require('googleapis');
-const bodyParser = require('body-parser');
-const cors = require('cors');
+const { JWT } = require('google-auth-library');
 
-const app = express();
-app.use(cors());
-app.use(bodyParser.json());
+// Decodifica las credenciales de Google desde la variable de entorno
+const base64Credentials = process.env.GOOGLE_CREDENTIALS;
 
-// CONFIGURACIÓN
-const calendarId = 'dr-plus@dr-plus-459218.iam.gserviceaccount.com'; // Cambia esto por tu calendarId real
-const timeZone = 'America/Santiago';
+// Verifica que las credenciales estén disponibles
+if (!base64Credentials) {
+  throw new Error('Las credenciales de Google no están configuradas en las variables de entorno.');
+}
 
-// 🔐 Lee credenciales desde variable de entorno
-const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+// Decodificar las credenciales de Base64 a su formato original (JSON)
+const credentialsJson = Buffer.from(base64Credentials, 'base64').toString('utf8');
 
-const auth = new google.auth.GoogleAuth({
-  credentials,
-  scopes: ['https://www.googleapis.com/auth/calendar'],
+// Parsear el JSON de las credenciales
+const credentials = JSON.parse(credentialsJson);
+
+// Configurar el cliente de autenticación con las credenciales decodificadas
+const authClient = new JWT({
+  email: credentials.client_email,
+  key: credentials.private_key,
+  scopes: ['https://www.googleapis.com/auth/calendar'],  // Ajusta los scopes según lo que necesites
 });
 
-app.post('/crear-evento', async (req, res) => {
-  const { nombre, email, fecha, hora } = req.body;
-
-  if (!nombre || !email || !fecha || !hora) {
-    return res.status(400).json({ error: 'Faltan datos requeridos' });
-  }
-
+// Llamar a la API de Google Calendar
+async function createGoogleEvent() {
   try {
-    const authClient = await auth.getClient();
+    // Autenticarse y obtener el token de acceso
+    await authClient.authorize();
+
     const calendar = google.calendar({ version: 'v3', auth: authClient });
 
-    const startDateTime = new Date(`${fecha}T${hora}:00`);
-    const endDateTime = new Date(startDateTime.getTime() + 30 * 60 * 1000); // 30 minutos
-
-    const response = await calendar.events.insert({
-      calendarId,
-      conferenceDataVersion: 1,
-      requestBody: {
-        summary: `Cita con ${nombre}`,
-        start: { dateTime: startDateTime.toISOString(), timeZone },
-        end: { dateTime: endDateTime.toISOString(), timeZone },
-        attendees: [{ email }],
-        conferenceData: {
-          createRequest: {
-            requestId: Math.random().toString(36).substring(2),
-            conferenceSolutionKey: { type: 'hangoutsMeet' },
-          },
-        },
+    // Crear un evento de Google Calendar
+    const event = {
+      summary: 'Cita de ejemplo',
+      location: 'Ubicación de la cita',
+      description: 'Descripción de la cita',
+      start: {
+        dateTime: '2025-05-09T09:00:00-07:00', // Establece la fecha y hora de inicio
+        timeZone: 'America/Los_Angeles', // Ajusta la zona horaria según sea necesario
       },
+      end: {
+        dateTime: '2025-05-09T09:30:00-07:00', // Establece la fecha y hora de fin
+        timeZone: 'America/Los_Angeles',
+      },
+      attendees: [
+        { email: 'ejemplo@dominio.com' }, // Agrega un correo de ejemplo
+      ],
+    };
+
+    // Crear el evento en Google Calendar
+    const res = await calendar.events.insert({
+      calendarId: 'primary',
+      resource: event,
     });
 
-    const meetLink = response.data.conferenceData.entryPoints?.find(
-      (e) => e.entryPointType === 'video'
-    )?.uri;
-
-    res.json({ meetLink });
-  } catch (err) {
-    console.error('Error al crear evento:', err);
-    res.status(500).json({ error: 'Error al crear evento' });
+    console.log('Evento creado:', res.data);
+  } catch (error) {
+    console.error('Error al crear evento:', error);
   }
-});
+}
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Microservicio activo en http://localhost:${PORT}`);
-});
+createGoogleEvent();
